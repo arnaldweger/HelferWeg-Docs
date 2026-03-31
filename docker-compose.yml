@@ -3,7 +3,7 @@ services:
     build: .
     container_name: helferweg-docs
     ports:
-      - "8501:8050" # Mapeia a porta 8501 externa para a 8050 interna do Dash
+      - "8501:8501" # Mapeia a porta 8501 externa para a 8050 interna do Dash
     volumes:
       - ./notas:/app/notas
       - ./data:/app/data

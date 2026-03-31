@@ -35,7 +35,7 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1
 
 # Porta padrão do Dash/Flask
-EXPOSE 8050
+EXPOSE 8501
 
 # Comando para rodar com Gunicorn (melhor para produção no Raspberry Pi)
-CMD ["gunicorn", "--bind", "0.0.0.0:8050", "app:server"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8501", "app:server"]

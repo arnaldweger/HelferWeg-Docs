@@ -189,5 +189,7 @@ def up_menus(cat, _):
     
     return opts_pastas, docs, opts_pastas
 
+server = app.server
+
 if __name__ == "__main__":
-    app.run(debug=True)
+	app.run(debug=True)
