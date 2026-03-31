@@ -65,22 +65,33 @@ app.layout = html.Div(id="main-container", children=[
         # ÁREA PRINCIPAL
         dbc.Col(id="col-main", children=[
             dbc.Tabs([
-                dbc.Tab(label="Visualizar", tab_id="aba-leitura"),
-                dbc.Tab(label="Editar", tab_id="aba-edicao"),
+                dbc.Tab(label="🔍 Visualizar", tab_id="aba-leitura"),
+                dbc.Tab(label="📝 Editar", tab_id="aba-edicao"),
             ], id="abas-doc", active_tab="aba-leitura", className="mt-2"),
             
-            # VISUALIZAÇÃO (MARKDOWN)
             html.Div(id="painel-leitura", children=[dcc.Markdown(id="md-viewer", className="p-4")]),
-            
-            # EDIÇÃO (TEXTAREA) - Ele fica SEMPRE no layout, apenas mudamos o display
             html.Div(id="painel-edicao", children=[
                 dcc.Textarea(id="area-editor", style={'width': '100%', 'height': '75vh', 'padding': '20px', 'fontFamily': 'monospace'})
-            ], style={'display': 'none'}) 
+            ], style={'display': 'none'}),
         ], width=9),
     ], className="g-0"),
 
     # MODAIS
-    dbc.Modal([dbc.ModalHeader("Nova Nota"), dbc.ModalBody([dbc.Label("Nome:"), dbc.Input(id="novo-nome"), dbc.Label("Pasta:"), dbc.Input(id="nova-categoria")]), dbc.ModalFooter(dbc.Button("Criar", id="btn-confirmar-criacao", color="primary"))], id="modal-criar", is_open=False),
+    dbc.Modal([
+        dbc.ModalHeader("Nova Nota"),
+        dbc.ModalBody([
+            dbc.Label("Nome da Nota:"),
+            dbc.Input(id="novo-nome", placeholder="Ex: Relatorio_Compras"),
+            html.Hr(),
+            dbc.Label("Selecionar Pasta Existente:"),
+            dcc.Dropdown(id="dropdown-pastas-modal", placeholder="Selecione uma pasta..."),
+            html.P("OU", className="text-center my-2 small fw-bold"),
+            dbc.Label("Criar Nova Pasta:"),
+            dbc.Input(id="nova-categoria", placeholder="Ex: 🐍Python"),
+        ]),
+        dbc.ModalFooter(dbc.Button("Criar", id="btn-confirmar-criacao", color="primary"))
+    ], id="modal-criar", is_open=False),
+
     dbc.Modal([dbc.ModalHeader("Renomear"), dbc.ModalBody([dbc.Label("Novo nome:"), dbc.Input(id="input-renomear")]), dbc.ModalFooter(dbc.Button("Confirmar", id="btn-confirmar-renomear", color="warning"))], id="modal-renomear", is_open=False),
     dbc.Modal([dbc.ModalHeader("Excluir"), dbc.ModalBody("Apagar permanentemente?"), dbc.ModalFooter(dbc.Button("Sim", id="btn-confirmar-excluir", color="danger"))], id="modal-deletar", is_open=False),
 ])
@@ -89,43 +100,33 @@ app.layout = html.Div(id="main-container", children=[
 # CALLBACKS
 # =============================================================================
 
-# 1. TEMA E ALTERNÂNCIA DE ABAS
 @app.callback(
     [Output("main-container", "style"), Output("col-sidebar", "style"), Output("txt-logo", "style"),
      Output("painel-leitura", "style"), Output("painel-edicao", "style"), Output("area-editor", "style")],
     [Input("seletor-tema-cat", "value"), Input("abas-doc", "active_tab")]
 )
 def atualizar_layout(tema, aba):
-    c = CAT_CORES[tema if tema else "Latte"]
-    
+    c = CAT_CORES[tema if tema else "Mocha"]
     style_main = {"backgroundColor": c['bg'], "color": c['fg'], "minHeight": "100vh"}
     style_side = {"backgroundColor": c['side'], "borderRight": f"1px solid {c['brd']}", "padding": "25px", "minHeight": "100vh"}
     style_logo = {"color": c['acc']}
-    
-    # Alternar visibilidade das Divs
     show_read = {'display': 'block'} if aba == 'aba-leitura' else {'display': 'none'}
     show_edit = {'display': 'block'} if aba == 'aba-edicao' else {'display': 'none'}
-    
-    # Estilo do Editor
     style_editor = {'width': '100%', 'height': '75vh', 'backgroundColor': c['side'], 'color': c['fg'], 
                     'border': f"1px solid {c['brd']}", 'padding': '20px', 'fontFamily': 'monospace'}
-    
     return style_main, style_side, style_logo, show_read, show_edit, style_editor
 
-# 2. CARREGAR CONTEÚDO (PARA O VIEWER E PARA O EDITOR AO MESMO TEMPO)
 @app.callback(
     [Output("md-viewer", "children"), Output("area-editor", "value")],
     [Input("store-arquivo-selecionado", "data")]
 )
 def carregar_arquivo(path):
     if not path or not os.path.exists(path):
-        msg = "Selecione uma nota no menu lateral."
-        return msg, ""
+        return "Selecione uma nota no menu lateral.", ""
     with open(path, "r", encoding="utf-8") as f:
         txt = f.read()
     return txt, txt
 
-# 3. CRUD (SALVAR, CRIAR, DELETAR, RENOMEAR)
 @app.callback(
     [Output("store-arquivo-selecionado", "data"), Output("status-geral", "children"), 
      Output("modal-criar", "is_open"), Output("modal-deletar", "is_open"), Output("modal-renomear", "is_open")],
@@ -134,11 +135,11 @@ def carregar_arquivo(path):
      Input("btn-abrir-modal", "n_clicks"), Input("btn-abrir-deletar", "n_clicks"), 
      Input("btn-abrir-renomear", "n_clicks"), Input("selecao-arquivo-dropdown", "value")],
     [State("store-arquivo-selecionado", "data"), State("area-editor", "value"), 
-     State("novo-nome", "value"), State("nova-categoria", "value"), State("input-renomear", "value"),
-     State("modal-criar", "is_open"), State("modal-deletar", "is_open"), State("modal-renomear", "is_open")],
+     State("novo-nome", "value"), State("nova-categoria", "value"), State("dropdown-pastas-modal", "value"),
+     State("input-renomear", "value"), State("modal-criar", "is_open"), State("modal-deletar", "is_open"), State("modal-renomear", "is_open")],
     prevent_initial_call=True
 )
-def crud_completo(n_sal, n_cri, n_exc, n_ren_conf, n_m1, n_m2, n_m3, drop_val, path, editor_txt, n_nome, n_cat, r_nome, m1, m2, m3):
+def crud_completo(n_sal, n_cri, n_exc, n_ren_conf, n_m1, n_m2, n_m3, drop_val, path, editor_txt, n_nome, n_cat_input, n_cat_drop, r_nome, m1, m2, m3):
     ctx = callback_context
     trig = ctx.triggered[0]['prop_id']
 
@@ -153,7 +154,9 @@ def crud_completo(n_sal, n_cri, n_exc, n_ren_conf, n_m1, n_m2, n_m3, drop_val, p
         return path, dbc.Alert("✅ Salvo!", color="success", duration=1000), False, False, False
 
     if "btn-confirmar-criacao" in trig and n_nome:
-        p = NOTAS_DIR / (n_cat if n_cat else "Geral")
+        # Prioriza o Dropdown, se vazio usa o Input, se ambos vazios usa 'Geral'
+        pasta = n_cat_drop if n_cat_drop else (n_cat_input if n_cat_input else "Geral")
+        p = NOTAS_DIR / pasta
         p.mkdir(exist_ok=True)
         arq = p / f"{n_nome}.md"
         with open(arq, "w", encoding="utf-8") as f: f.write(f"# {n_nome}")
@@ -170,15 +173,21 @@ def crud_completo(n_sal, n_cri, n_exc, n_ren_conf, n_m1, n_m2, n_m3, drop_val, p
 
     return no_update, "", False, False, False
 
-# 4. MENUS
-@app.callback([Output("filtro-categoria", "options"), Output("selecao-arquivo-dropdown", "options")], 
-              [Input("filtro-categoria", "value"), Input("status-geral", "children")])
+@app.callback(
+    [Output("filtro-categoria", "options"), 
+     Output("selecao-arquivo-dropdown", "options"),
+     Output("dropdown-pastas-modal", "options")],
+    [Input("filtro-categoria", "value"), Input("status-geral", "children")]
+)
 def up_menus(cat, _):
     df = listar_notas()
-    cats = [{'label': c, 'value': c} for c in sorted(df['categoria'].unique())]
+    lista_pastas = sorted(df['categoria'].unique())
+    opts_pastas = [{'label': c, 'value': c} for c in lista_pastas]
+    
     if cat: df = df[df['categoria'] == cat]
     docs = [{'label': n, 'value': c} for n, c in zip(df['nome'], df['caminho'])]
-    return cats, docs
+    
+    return opts_pastas, docs, opts_pastas
 
 if __name__ == "__main__":
     app.run(debug=True)
