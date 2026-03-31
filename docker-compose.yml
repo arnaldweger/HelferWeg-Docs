@@ -1,0 +1,11 @@
+services:
+  helferweg-docs:
+    build: .
+    container_name: helferweg-docs
+    ports:
+      - "8501:8050" # Mapeia a porta 8501 externa para a 8050 interna do Dash
+    volumes:
+      - ./notas:/app/notas
+      - ./data:/app/data
+      - ./assets:/app/assets
+    restart: unless-stopped
